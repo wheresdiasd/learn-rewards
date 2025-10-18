@@ -89,6 +89,9 @@ async function writeData(data) {
   await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
+// Feature flag: Use smart contract or centralized approach
+const USE_SMART_CONTRACT = process.env.USE_SMART_CONTRACT === 'true';
+
 // Algorand setup
 function getAlgodClient() {
   const algodToken = process.env.ALGOD_TOKEN || '';
@@ -97,6 +100,54 @@ function getAlgodClient() {
   return new algosdk.Algodv2(algodToken, algodServer, algodPort);
 }
 
+// NEW: Smart contract approval function
+async function approveViaContract(recipientAddress) {
+  try {
+    const appId = parseInt(process.env.SMART_CONTRACT_APP_ID || '0');
+    const privateKey = process.env.ORG_PRIVATE_KEY;
+
+    if (!appId) {
+      throw new Error('SMART_CONTRACT_APP_ID not configured');
+    }
+    if (!privateKey) {
+      throw new Error('ORG_PRIVATE_KEY not configured');
+    }
+
+    const algodClient = getAlgodClient();
+
+    // Decode the base64 private key
+    const secretKey = new Uint8Array(Buffer.from(privateKey, 'base64'));
+    const account = { sk: secretKey, addr: algosdk.encodeAddress(secretKey.slice(32)) };
+
+    // Get suggested params
+    const suggestedParams = await algodClient.getTransactionParams().do();
+
+    // Call smart contract's approveAndPay method
+    const appCallTxn = algosdk.makeApplicationCallTxnFromObject({
+      from: account.addr,
+      appIndex: appId,
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      appArgs: [
+        new Uint8Array(Buffer.from('approveAndPay')),
+        algosdk.decodeAddress(recipientAddress).publicKey,
+      ],
+      suggestedParams,
+    });
+
+    const signedTxn = appCallTxn.signTxn(account.sk);
+    const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
+    await algosdk.waitForConfirmation(algodClient, txId, 4);
+
+    console.log('Smart contract approval confirmed:', txId);
+
+    return { txId, amount: 100 }; // Keep same return signature
+  } catch (error) {
+    console.error('Smart contract approval error:', error);
+    throw error;
+  }
+}
+
+// LEGACY: Centralized ASA transfer (kept for fallback)
 async function sendASAReward(recipientAddress) {
   try {
     const privateKey = process.env.ORG_PRIVATE_KEY;
@@ -205,8 +256,10 @@ app.post('/api/review/pass', async (req, res) => {
       return res.status(400).json({ error: 'No wallet address connected' });
     }
 
-    // Send ASA reward
-    const { txId, amount } = await sendASAReward(data.submission.walletAddress);
+    // Send ASA reward (smart contract or centralized based on feature flag)
+    const { txId, amount } = USE_SMART_CONTRACT
+      ? await approveViaContract(data.submission.walletAddress)
+      : await sendASAReward(data.submission.walletAddress);
 
     // Update submission
     data.submission.status = 'approved';
@@ -298,4 +351,8 @@ app.listen(PORT, () => {
   console.log('- ALGOD_URL:', process.env.ALGOD_URL || 'https://testnet-api.algonode.cloud (default)');
   console.log('- ASA_ID:', process.env.ASA_ID || 'NOT SET');
   console.log('- ORG_PRIVATE_KEY:', process.env.ORG_PRIVATE_KEY ? 'SET' : 'NOT SET');
+  console.log('- USE_SMART_CONTRACT:', USE_SMART_CONTRACT ? 'TRUE (Decentralized)' : 'FALSE (Centralized)');
+  if (USE_SMART_CONTRACT) {
+    console.log('- SMART_CONTRACT_APP_ID:', process.env.SMART_CONTRACT_APP_ID || 'NOT SET');
+  }
 });

@@ -1,0 +1,120 @@
+#pragma version 10
+
+// Reward Distribution Smart Contract
+// State: validator (bytes), asaId (uint64), rewardAmount (uint64)
+
+txn ApplicationID
+int 0
+==
+bnz create_app
+
+// Route based on OnCompletion
+txn OnCompletion
+int NoOp
+==
+bnz handle_noop
+
+// Reject all other OnCompletion types
+err
+
+create_app:
+    // Initialize state on creation
+    // Arg 0: validator address
+    // Arg 1: ASA ID
+    // Arg 2: reward amount
+
+    byte "validator"
+    txna ApplicationArgs 0
+    app_global_put
+
+    byte "asaId"
+    txna ApplicationArgs 1
+    btoi
+    app_global_put
+
+    byte "rewardAmount"
+    txna ApplicationArgs 2
+    btoi
+    app_global_put
+
+    int 1
+    return
+
+handle_noop:
+    // Check which method is being called
+    txna ApplicationArgs 0
+    byte "approveAndPay"
+    ==
+    bnz approve_and_pay
+
+    txna ApplicationArgs 0
+    byte "optInToAsa"
+    ==
+    bnz opt_in_to_asa
+
+    err
+
+approve_and_pay:
+    // Verify sender is validator
+    txn Sender
+    byte "validator"
+    app_global_get
+    ==
+    assert
+
+    // Get learner address from args
+    txna ApplicationArgs 1
+
+    // Get reward amount and ASA ID from state
+    byte "rewardAmount"
+    app_global_get
+
+    byte "asaId"
+    app_global_get
+
+    // Create inner transaction to send ASA
+    itxn_begin
+
+    int axfer
+    itxn_field TypeEnum
+
+    txna ApplicationArgs 1
+    itxn_field AssetReceiver
+
+    byte "rewardAmount"
+    app_global_get
+    itxn_field AssetAmount
+
+    byte "asaId"
+    app_global_get
+    itxn_field XferAsset
+
+    itxn_submit
+
+    int 1
+    return
+
+opt_in_to_asa:
+    // Opt contract into ASA
+    byte "asaId"
+    app_global_get
+
+    itxn_begin
+
+    int axfer
+    itxn_field TypeEnum
+
+    global CurrentApplicationAddress
+    itxn_field AssetReceiver
+
+    int 0
+    itxn_field AssetAmount
+
+    byte "asaId"
+    app_global_get
+    itxn_field XferAsset
+
+    itxn_submit
+
+    int 1
+    return

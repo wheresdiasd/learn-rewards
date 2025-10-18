@@ -1,0 +1,26 @@
+{
+  "name": "algorand-smart-contracts",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Smart contracts for decentralized reward distribution",
+  "scripts": {
+    "create-asa": "node --loader ts-node/esm create-asa.ts",
+    "compile": "tealscript RewardContract.algo.ts",
+    "deploy": "node --loader ts-node/esm deploy.ts",
+    "fund": "node --loader ts-node/esm fund-contract.ts",
+    "test": "node --loader ts-node/esm test.ts",
+    "setup-all": "npm run compile && npm run deploy && npm run fund"
+  },
+  "dependencies": {
+    "@algorandfoundation/tealscript": "^0.96.0",
+    "@algorandfoundation/xhd-wallet-api": "^1.0.3",
+    "algosdk": "^2.7.0",
+    "bip39": "^3.1.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
