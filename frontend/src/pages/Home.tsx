@@ -26,11 +26,22 @@ function Home({ walletAddress }: HomeProps) {
 
   const fetchSubmission = async () => {
     try {
-      const res = await fetch(`${API_BASE}/submission`);
+      const res = await fetch(`${API_BASE}/submissions`);
       if (res.ok) {
-        const data = await res.json();
-        setSubmission(data);
-        setPrUrl(data.prUrl || '');
+        const allSubmissions = await res.json();
+        // Get the latest submission for this user
+        const latestSubmission = allSubmissions.length > 0
+          ? allSubmissions[allSubmissions.length - 1]
+          : null;
+
+        if (latestSubmission) {
+          setSubmission({
+            prUrl: latestSubmission.prUrl,
+            status: latestSubmission.status,
+            txId: latestSubmission.txId
+          });
+          setPrUrl(latestSubmission.prUrl || '');
+        }
       }
     } catch (err) {
       console.error('Failed to fetch submission:', err);
@@ -56,7 +67,11 @@ function Home({ walletAddress }: HomeProps) {
 
       if (res.ok) {
         const data = await res.json();
-        setSubmission(data);
+        setSubmission({
+          prUrl: data.prUrl,
+          status: data.status,
+          txId: data.txId
+        });
         setSuccess('PR submission saved!');
       } else {
         setError('Failed to save submission');
@@ -171,12 +186,12 @@ function Home({ walletAddress }: HomeProps) {
                 value={prUrl}
                 onChange={(e) => setPrUrl(e.target.value)}
                 placeholder="https://github.com/..."
-                disabled={loading}
+                disabled={loading || submission?.status === 'approved'}
               />
             </div>
 
-            <button onClick={submitPR} disabled={loading || !walletAddress}>
-              {loading ? 'Saving...' : 'Submit PR'}
+            <button onClick={submitPR} disabled={loading || !walletAddress || submission?.status === 'approved'}>
+              {loading ? 'Saving...' : submission?.status === 'approved' ? 'Already Approved' : 'Submit PR'}
             </button>
 
             {submission && (

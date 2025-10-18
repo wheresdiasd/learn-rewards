@@ -25,11 +25,7 @@ async function initDataFile() {
         displayName: 'Default Learner',
         walletAddress: null,
       },
-      submission: {
-        prUrl: '',
-        status: 'draft',
-        txId: null,
-      },
+      submissions: [],
       rewards: [],
       partners: [
         {
@@ -278,7 +274,6 @@ app.post('/api/wallet', async (req, res) => {
     const { address } = req.body;
     const data = await readData();
     data.user.walletAddress = address;
-    data.submission.walletAddress = address;
     await writeData(data);
     res.json({ success: true, address });
   } catch (error) {
@@ -286,70 +281,112 @@ app.post('/api/wallet', async (req, res) => {
   }
 });
 
-// GET /api/submission
-app.get('/api/submission', async (req, res) => {
+// GET /api/submissions - Get all submissions (for Volunteer page)
+app.get('/api/submissions', async (req, res) => {
   try {
     const data = await readData();
-    res.json(data.submission);
+    res.json(data.submissions);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/submission
+// POST /api/submission - Create a new submission
 app.post('/api/submission', async (req, res) => {
   try {
     const { prUrl } = req.body;
     const data = await readData();
-    data.submission.prUrl = prUrl;
-    data.submission.status = 'draft';
+
+    // Generate new submission ID
+    const newId = data.submissions.length > 0
+      ? Math.max(...data.submissions.map(s => s.id)) + 1
+      : 1;
+
+    const newSubmission = {
+      id: newId,
+      userId: data.user.id,
+      prUrl,
+      walletAddress: data.user.walletAddress,
+      status: 'draft',
+      txId: null,
+      createdAt: new Date().toISOString(),
+      reviewedAt: null,
+    };
+
+    data.submissions.push(newSubmission);
     await writeData(data);
-    res.json(data.submission);
+    res.json(newSubmission);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/review/pass
+// POST /api/review/pass - Approve a submission by ID
 app.post('/api/review/pass', async (req, res) => {
   try {
+    const { submissionId } = req.body;
     const data = await readData();
 
-    if (!data.submission.walletAddress) {
+    // Find the submission
+    const submission = data.submissions.find(s => s.id === submissionId);
+    if (!submission) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    if (!submission.walletAddress) {
       return res.status(400).json({ error: 'No wallet address connected' });
+    }
+
+    if (submission.status !== 'draft') {
+      return res.status(400).json({ error: 'Submission already reviewed' });
     }
 
     // Send ASA reward (smart contract or centralized based on feature flag)
     const { txId, amount } = USE_SMART_CONTRACT
-      ? await approveViaContract(data.submission.walletAddress)
-      : await sendASAReward(data.submission.walletAddress);
+      ? await approveViaContract(submission.walletAddress)
+      : await sendASAReward(submission.walletAddress);
 
     // Update submission
-    data.submission.status = 'approved';
-    data.submission.txId = txId;
+    submission.status = 'approved';
+    submission.txId = txId;
+    submission.reviewedAt = new Date().toISOString();
 
     // Add reward record
     data.rewards.push({
+      submissionId,
       amount,
       txId,
       createdAt: new Date().toISOString(),
     });
 
     await writeData(data);
-    res.json(data.submission);
+    res.json(submission);
   } catch (error) {
     console.error('Pass review error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/review/fail
+// POST /api/review/fail - Reject a submission by ID
 app.post('/api/review/fail', async (req, res) => {
   try {
+    const { submissionId } = req.body;
     const data = await readData();
-    data.submission.status = 'rejected';
+
+    // Find the submission
+    const submission = data.submissions.find(s => s.id === submissionId);
+    if (!submission) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    if (submission.status !== 'draft') {
+      return res.status(400).json({ error: 'Submission already reviewed' });
+    }
+
+    submission.status = 'rejected';
+    submission.reviewedAt = new Date().toISOString();
     await writeData(data);
-    res.json(data.submission);
+    res.json(submission);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
