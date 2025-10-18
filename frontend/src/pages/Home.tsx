@@ -112,23 +112,29 @@ function Home() {
   return (
     <div>
       <h1>Introduction to Blockchain Development</h1>
-      <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#ccc' }}>
+      <p style={{ fontSize: '1.1rem', marginBottom: '3rem', color: '#64748b' }}>
         Learn blockchain fundamentals and earn Algorand ASA tokens for completing assignments.
       </p>
 
       <div className="card">
         <h2>Course Content</h2>
-        <div style={{ textAlign: 'left', marginTop: '1rem' }}>
-          <h3 style={{ color: '#00d4aa' }}>Module 1: Algorand Basics</h3>
-          <h4>Lecture 1: Introduction to Algorand</h4>
-          <p style={{ color: '#ccc', lineHeight: '1.6' }}>
+        <div style={{ textAlign: 'left', marginTop: '1.5rem' }}>
+          <h3 style={{ color: '#3b82f6', marginBottom: '1rem' }}>Module 1: Algorand Basics</h3>
+          <h4 style={{ marginBottom: '0.75rem' }}>Lecture 1: Introduction to Algorand</h4>
+          <p style={{ color: '#64748b', lineHeight: '1.7', marginBottom: '1.5rem' }}>
             Algorand is a pure proof-of-stake blockchain that provides a decentralized, scalable, and secure platform
             for building applications. In this lecture, you'll learn about Algorand's architecture, consensus mechanism,
             and key features like Algorand Standard Assets (ASAs).
           </p>
-          <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#2a2a2a', borderRadius: '4px' }}>
-            <strong>Assignment:</strong>
-            <p style={{ marginTop: '0.5rem', color: '#ccc' }}>
+          <div style={{
+            marginTop: '1.5rem',
+            padding: '1.25rem',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)',
+            borderRadius: '8px',
+            border: '1px solid #e0e7ff'
+          }}>
+            <strong style={{ color: '#1e293b', fontSize: '1.05rem' }}>Assignment:</strong>
+            <p style={{ marginTop: '0.75rem', color: '#475569', lineHeight: '1.6' }}>
               Create a simple smart contract on Algorand TestNet and submit a pull request to our demo repository.
             </p>
           </div>
@@ -138,13 +144,18 @@ function Home() {
       <div className="card">
         <h2>Wallet Connection</h2>
         {!walletAddress ? (
-          <button onClick={connectWallet}>Connect Pera Wallet</button>
+          <div>
+            <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+              Connect your Pera Wallet to submit assignments and receive rewards.
+            </p>
+            <button onClick={connectWallet}>Connect Pera Wallet</button>
+          </div>
         ) : (
           <div>
-            <p style={{ wordBreak: 'break-all', color: '#00d4aa' }}>
+            <p style={{ wordBreak: 'break-all', color: '#059669', padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
               <strong>Connected:</strong> {walletAddress}
             </p>
-            <button onClick={disconnectWallet} style={{ marginTop: '1rem', background: '#666' }}>
+            <button onClick={disconnectWallet} style={{ marginTop: '1rem', background: 'linear-gradient(135deg, #64748b 0%, #475569 100%)' }}>
               Disconnect
             </button>
           </div>
@@ -175,24 +186,41 @@ function Home() {
         </button>
 
         {submission && (
-          <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#2a2a2a', borderRadius: '4px' }}>
+          <div style={{
+            marginTop: '1.5rem',
+            padding: '1.25rem',
+            background: submission.status === 'approved'
+              ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+              : submission.status === 'rejected'
+              ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'
+              : 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+            borderRadius: '8px',
+            border: `1px solid ${
+              submission.status === 'approved'
+                ? '#bbf7d0'
+                : submission.status === 'rejected'
+                ? '#fecaca'
+                : '#fde68a'
+            }`
+          }}>
             <p>
               <strong>Status:</strong>{' '}
               <span
                 style={{
                   color:
                     submission.status === 'approved'
-                      ? '#00d4aa'
+                      ? '#059669'
                       : submission.status === 'rejected'
-                      ? '#ff6b6b'
-                      : '#feca57',
+                      ? '#dc2626'
+                      : '#d97706',
+                  fontWeight: '600'
                 }}
               >
                 {submission.status.toUpperCase()}
               </span>
             </p>
             {submission.txId && (
-              <p style={{ wordBreak: 'break-all', marginTop: '0.5rem' }}>
+              <p style={{ wordBreak: 'break-all', marginTop: '0.75rem', color: '#475569' }}>
                 <strong>Transaction ID:</strong> {submission.txId}
               </p>
             )}

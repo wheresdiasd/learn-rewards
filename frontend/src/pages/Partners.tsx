@@ -62,24 +62,24 @@ function Partners() {
   return (
     <div>
       <h1>Partner Directory</h1>
-      <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#ccc' }}>
+      <p style={{ fontSize: '1.1rem', marginBottom: '3rem', color: '#64748b' }}>
         Use your earned ASA tokens to access learning opportunities from our partner institutions.
       </p>
 
       {error && <div className="error">{error}</div>}
 
       {loading ? (
-        <p style={{ color: '#888' }}>Loading partners...</p>
+        <p style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>Loading partners...</p>
       ) : (
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
             gap: '2rem',
           }}
         >
           {partners.map((partner) => (
-            <div key={partner.id} className="card">
+            <div key={partner.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
               <img
                 src={partner.imageUrl}
                 alt={partner.name}
@@ -87,17 +87,18 @@ function Partners() {
                   width: '100%',
                   height: '200px',
                   objectFit: 'cover',
-                  borderRadius: '4px',
+                  borderRadius: '8px',
                   marginBottom: '1rem',
+                  border: '1px solid #e0e7ff',
                 }}
               />
-              <h3 style={{ marginBottom: '0.5rem', color: '#00d4aa' }}>{partner.name}</h3>
-              <p style={{ color: '#ccc', marginBottom: '1rem', lineHeight: '1.6' }}>{partner.description}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 'bold', color: '#00d4aa', fontSize: '1.1rem' }}>
-                  {partner.asaCost} ASA
+              <h3 style={{ marginBottom: '0.75rem', color: '#1e293b' }}>{partner.name}</h3>
+              <p style={{ color: '#64748b', marginBottom: '1.5rem', lineHeight: '1.7', flex: 1 }}>{partner.description}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid #e0e7ff' }}>
+                <span style={{ fontWeight: 'bold', color: '#8b5cf6', fontSize: '1.25rem' }}>
+                  {partner.asaCost} <span style={{ fontSize: '0.9rem', color: '#64748b' }}>ASA</span>
                 </span>
-                <button onClick={() => handlePurchase(partner.id)}>Buy with ASA</button>
+                <button onClick={() => handlePurchase(partner.id)} style={{ fontSize: '0.95rem' }}>Buy with ASA</button>
               </div>
             </div>
           ))}

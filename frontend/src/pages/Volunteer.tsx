@@ -86,7 +86,7 @@ function Volunteer() {
   return (
     <div>
       <h1>Volunteer Review Panel</h1>
-      <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#ccc' }}>
+      <p style={{ fontSize: '1.1rem', marginBottom: '3rem', color: '#64748b' }}>
         Review learner submissions and approve rewards.
       </p>
 
@@ -94,22 +94,22 @@ function Volunteer() {
       {success && <div className="success">{success}</div>}
 
       {!submission || !submission.prUrl ? (
-        <div className="card">
-          <p style={{ color: '#888' }}>No submission available yet.</p>
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+          <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>No submission available yet.</p>
         </div>
       ) : (
         <div className="card">
           <h2>Current Submission</h2>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#00d4aa' }}>
+            <label style={{ display: 'block', marginBottom: '0.75rem' }}>
               <strong>Pull Request URL:</strong>
             </label>
             <a
               href={submission.prUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: '#00d4aa', wordBreak: 'break-all' }}
+              style={{ wordBreak: 'break-all' }}
             >
               {submission.prUrl}
             </a>
@@ -117,39 +117,49 @@ function Volunteer() {
 
           {submission.walletAddress && (
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#00d4aa' }}>
+              <label style={{ display: 'block', marginBottom: '0.75rem' }}>
                 <strong>Learner Wallet:</strong>
               </label>
-              <p style={{ wordBreak: 'break-all', fontFamily: 'monospace', color: '#ccc' }}>
+              <p style={{ wordBreak: 'break-all', fontFamily: 'monospace', color: '#64748b', padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                 {submission.walletAddress}
               </p>
             </div>
           )}
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#00d4aa' }}>
+            <label style={{ display: 'block', marginBottom: '0.75rem' }}>
               <strong>Status:</strong>
             </label>
-            <p
+            <span
               style={{
+                display: 'inline-block',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                fontWeight: '600',
+                background:
+                  submission.status === 'approved'
+                    ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)'
+                    : submission.status === 'rejected'
+                    ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'
+                    : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
                 color:
                   submission.status === 'approved'
-                    ? '#00d4aa'
+                    ? '#059669'
                     : submission.status === 'rejected'
-                    ? '#ff6b6b'
-                    : '#feca57',
+                    ? '#dc2626'
+                    : '#d97706',
               }}
             >
               {submission.status.toUpperCase()}
-            </p>
+            </span>
           </div>
 
           {submission.txId && (
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#00d4aa' }}>
+              <label style={{ display: 'block', marginBottom: '0.75rem' }}>
                 <strong>Transaction ID:</strong>
               </label>
-              <p style={{ wordBreak: 'break-all', fontFamily: 'monospace', color: '#ccc' }}>
+              <p style={{ wordBreak: 'break-all', fontFamily: 'monospace', color: '#64748b', padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                 {submission.txId}
               </p>
             </div>
@@ -163,7 +173,7 @@ function Volunteer() {
               <button
                 onClick={handleFail}
                 disabled={loading}
-                style={{ background: '#ff6b6b', color: '#fff' }}
+                style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#fff' }}
               >
                 Fail
               </button>
@@ -171,9 +181,11 @@ function Volunteer() {
           )}
 
           {!submission.walletAddress && (
-            <p style={{ color: '#ff6b6b', marginTop: '1rem' }}>
-              ⚠ Learner must connect wallet before approval.
-            </p>
+            <div style={{ marginTop: '1rem', padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+              <p style={{ color: '#dc2626', margin: 0 }}>
+                ⚠ Learner must connect wallet before approval.
+              </p>
+            </div>
           )}
         </div>
       )}

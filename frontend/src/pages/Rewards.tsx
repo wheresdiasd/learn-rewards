@@ -81,14 +81,14 @@ function Rewards() {
   return (
     <div>
       <h1>Your Rewards</h1>
-      <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#ccc' }}>
+      <p style={{ fontSize: '1.1rem', marginBottom: '3rem', color: '#64748b' }}>
         Track your earned LEARN tokens from the blockchain.
       </p>
 
       {!walletAddress && !loading && (
-        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
           <h2>Connect Your Wallet</h2>
-          <p style={{ color: '#888', marginBottom: '1.5rem' }}>
+          <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '1.05rem' }}>
             Please connect your Pera Wallet to view your rewards
           </p>
           <button onClick={connectWallet}>Connect Pera Wallet</button>
@@ -99,53 +99,53 @@ function Rewards() {
 
       {walletAddress && (
         <>
-          <div className="card">
-            <h2>Total Earned (LEARN Tokens)</h2>
-            <p style={{ fontSize: '2rem', color: '#00d4aa', fontWeight: 'bold', margin: '1rem 0' }}>
-              {totalRewards} LEARN
+          <div className="card" style={{ textAlign: 'center', background: 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)', border: '2px solid #e0e7ff' }}>
+            <h2>Total Earned</h2>
+            <p style={{ fontSize: '3rem', color: '#3b82f6', fontWeight: 'bold', margin: '1.5rem 0', textShadow: '0 2px 4px rgba(59, 130, 246, 0.1)' }}>
+              {totalRewards} <span style={{ fontSize: '1.5rem', color: '#8b5cf6' }}>LEARN</span>
             </p>
-            <p style={{ fontSize: '0.9rem', color: '#888' }}>
+            <p style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem' }}>
               {rewards.length} transaction{rewards.length !== 1 ? 's' : ''} from blockchain
             </p>
-            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
-              Wallet: {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
+            <p style={{ fontSize: '0.9rem', color: '#94a3b8', padding: '0.5rem 1rem', background: 'rgba(255, 255, 255, 0.7)', borderRadius: '6px', display: 'inline-block' }}>
+              {walletAddress.slice(0, 12)}...{walletAddress.slice(-12)}
             </p>
           </div>
 
           <div className="card">
         <h2>Transaction History</h2>
         {loading ? (
-          <p style={{ color: '#888' }}>Loading...</p>
+          <p style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>Loading...</p>
         ) : rewards.length === 0 ? (
-          <p style={{ color: '#888' }}>No rewards earned yet. Complete assignments to earn ASA tokens!</p>
+          <p style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>No rewards earned yet. Complete assignments to earn ASA tokens!</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #333' }}>
-                  <th style={{ textAlign: 'left', padding: '1rem', color: '#00d4aa' }}>Amount</th>
-                  <th style={{ textAlign: 'left', padding: '1rem', color: '#00d4aa' }}>Date</th>
-                  <th style={{ textAlign: 'left', padding: '1rem', color: '#00d4aa' }}>Source</th>
-                  <th style={{ textAlign: 'left', padding: '1rem', color: '#00d4aa' }}>Transaction ID</th>
+                <tr style={{ borderBottom: '2px solid #e0e7ff', background: '#f8fafc' }}>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#3b82f6', fontWeight: '600' }}>Amount</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#3b82f6', fontWeight: '600' }}>Date</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#3b82f6', fontWeight: '600' }}>Source</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#3b82f6', fontWeight: '600' }}>Transaction ID</th>
                 </tr>
               </thead>
               <tbody>
                 {rewards.map((reward, index) => (
-                  <tr key={index} style={{ borderBottom: '1px solid #333' }}>
-                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#00d4aa' }}>
+                  <tr key={index} style={{ borderBottom: '1px solid #e2e8f0', transition: 'background 0.2s' }}>
+                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#059669' }}>
                       +{reward.amount} LEARN
                     </td>
-                    <td style={{ padding: '1rem', color: '#ccc' }}>{formatDate(reward.createdAt)}</td>
-                    <td style={{ padding: '1rem', color: '#ccc', fontSize: '0.85rem' }}>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>{formatDate(reward.createdAt)}</td>
+                    <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
                       {reward.fromContract ? (
-                        <span style={{ color: '#ffa500' }}>
+                        <span style={{ color: '#8b5cf6', padding: '0.25rem 0.5rem', background: '#f5f3ff', borderRadius: '4px', fontWeight: '500' }}>
                           🤖 Smart Contract
                         </span>
                       ) : (
                         <span>Direct Transfer</span>
                       )}
                       {reward.round && (
-                        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>
                           Round {reward.round}
                         </div>
                       )}
@@ -154,16 +154,14 @@ function Rewards() {
                       style={{
                         padding: '1rem',
                         fontFamily: 'monospace',
-                        fontSize: '0.9rem',
+                        fontSize: '0.85rem',
                         wordBreak: 'break-all',
-                        color: '#ccc',
                       }}
                     >
                       <a
                         href={`https://testnet.algoexplorer.io/tx/${reward.txId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: '#00d4aa' }}
                       >
                         {reward.txId}
                       </a>
