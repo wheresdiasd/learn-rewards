@@ -1,7 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
 import algosdk from 'algosdk';
+import * as bip39 from 'bip39';
+import { XHDWalletAPI, fromSeed, KeyContext } from '@algorandfoundation/xhd-wallet-api';
 
 const app = express();
 const PORT = 3001;
@@ -100,41 +103,94 @@ function getAlgodClient() {
   return new algosdk.Algodv2(algodToken, algodServer, algodPort);
 }
 
+// Helper functions for BIP-39 mnemonic handling
+function normalize(m) {
+  return m.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+async function keyGenCompat(xhd, root, account, index) {
+  try {
+    return await xhd.keyGen(root, KeyContext.Address, account, index);
+  } catch {}
+  return await xhd.keyGen(root, KeyContext.Address, account, 0, index);
+}
+
+async function signCompat(xhd, root, account, index, messageBytes) {
+  try {
+    return await xhd.signAlgoTransaction(root, KeyContext.Address, account, 0, index, messageBytes);
+  } catch {
+    return await xhd.signAlgoTransaction(root, KeyContext.Address, account, index, messageBytes);
+  }
+}
+
+async function derive24(mnemonic, { account, index, passphrase }) {
+  if (!bip39.validateMnemonic(mnemonic)) {
+    throw new Error('Invalid BIP-39 mnemonic');
+  }
+  const seed = bip39.mnemonicToSeedSync(mnemonic, passphrase);
+  const root = fromSeed(seed);
+  const xhd = new XHDWalletAPI();
+  const pub = await keyGenCompat(xhd, root, account, index);
+  const addr = algosdk.encodeAddress(pub);
+
+  async function signTxn(txn) {
+    const bytes = txn.bytesToSign();
+    const sig = await signCompat(xhd, root, account, index, bytes);
+    return txn.attachSignature(addr, sig);
+  }
+
+  return { addr, signTxn };
+}
+
 // NEW: Smart contract approval function
 async function approveViaContract(recipientAddress) {
   try {
     const appId = parseInt(process.env.SMART_CONTRACT_APP_ID || '0');
-    const privateKey = process.env.ORG_PRIVATE_KEY;
+    const mnemonic = process.env.MNEMONIC;
+    const bip39Pass = process.env.BIP39_PASS || '';
+    const account = parseInt(process.env.ACCOUNT ?? '0', 10);
+    const index = parseInt(process.env.INDEX ?? '0', 10);
 
     if (!appId) {
       throw new Error('SMART_CONTRACT_APP_ID not configured');
     }
-    if (!privateKey) {
-      throw new Error('ORG_PRIVATE_KEY not configured');
+    if (!mnemonic) {
+      throw new Error('MNEMONIC not configured');
     }
 
     const algodClient = getAlgodClient();
 
-    // Decode the base64 private key
-    const secretKey = new Uint8Array(Buffer.from(privateKey, 'base64'));
-    const account = { sk: secretKey, addr: algosdk.encodeAddress(secretKey.slice(32)) };
+    // Derive account from BIP-39 mnemonic
+    const m = normalize(mnemonic);
+    const { addr, signTxn } = await derive24(m, {
+      account,
+      index,
+      passphrase: bip39Pass,
+    });
 
     // Get suggested params
     const suggestedParams = await algodClient.getTransactionParams().do();
 
+    // Get ASA ID from env
+    const asaId = parseInt(process.env.ASA_ID || '0');
+    if (!asaId) {
+      throw new Error('ASA_ID not configured');
+    }
+
     // Call smart contract's approveAndPay method
     const appCallTxn = algosdk.makeApplicationCallTxnFromObject({
-      from: account.addr,
+      from: addr,
       appIndex: appId,
       onComplete: algosdk.OnApplicationComplete.NoOpOC,
       appArgs: [
         new Uint8Array(Buffer.from('approveAndPay')),
         algosdk.decodeAddress(recipientAddress).publicKey,
       ],
+      foreignAssets: [asaId],
       suggestedParams,
     });
 
-    const signedTxn = appCallTxn.signTxn(account.sk);
+    const signedTxn = await signTxn(appCallTxn);
     const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
     await algosdk.waitForConfirmation(algodClient, txId, 4);
 
@@ -150,11 +206,14 @@ async function approveViaContract(recipientAddress) {
 // LEGACY: Centralized ASA transfer (kept for fallback)
 async function sendASAReward(recipientAddress) {
   try {
-    const privateKey = process.env.ORG_PRIVATE_KEY;
+    const mnemonic = process.env.MNEMONIC;
+    const bip39Pass = process.env.BIP39_PASS || '';
+    const account = parseInt(process.env.ACCOUNT ?? '0', 10);
+    const index = parseInt(process.env.INDEX ?? '0', 10);
     const asaId = parseInt(process.env.ASA_ID || '0');
 
-    if (!privateKey) {
-      throw new Error('ORG_PRIVATE_KEY not configured');
+    if (!mnemonic) {
+      throw new Error('MNEMONIC not configured');
     }
     if (!asaId) {
       throw new Error('ASA_ID not configured');
@@ -162,9 +221,13 @@ async function sendASAReward(recipientAddress) {
 
     const algodClient = getAlgodClient();
 
-    // Decode the base64 private key
-    const secretKey = new Uint8Array(Buffer.from(privateKey, 'base64'));
-    const account = { sk: secretKey, addr: algosdk.encodeAddress(secretKey.slice(32)) };
+    // Derive account from BIP-39 mnemonic
+    const m = normalize(mnemonic);
+    const { addr, signTxn } = await derive24(m, {
+      account,
+      index,
+      passphrase: bip39Pass,
+    });
 
     // Get suggested params
     const suggestedParams = await algodClient.getTransactionParams().do();
@@ -172,7 +235,7 @@ async function sendASAReward(recipientAddress) {
     // Create asset transfer transaction
     const amount = 100; // 100 ASA units (adjust based on decimals)
     const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      from: account.addr,
+      from: addr,
       to: recipientAddress,
       amount: amount,
       assetIndex: asaId,
@@ -180,7 +243,7 @@ async function sendASAReward(recipientAddress) {
     });
 
     // Sign the transaction
-    const signedTxn = txn.signTxn(account.sk);
+    const signedTxn = await signTxn(txn);
 
     // Submit the transaction
     const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
@@ -292,12 +355,80 @@ app.post('/api/review/fail', async (req, res) => {
   }
 });
 
-// GET /api/rewards
+// GET /api/rewards?address=WALLET_ADDRESS - Returns LEARN coin (ASA) rewards from blockchain for specified wallet
 app.get('/api/rewards', async (req, res) => {
   try {
-    const data = await readData();
-    res.json(data.rewards);
+    const walletAddress = req.query.address;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'Wallet address parameter required' });
+    }
+
+    // Validate Algorand address format
+    if (!algosdk.isValidAddress(walletAddress)) {
+      return res.status(400).json({ error: 'Invalid Algorand address' });
+    }
+
+    const asaId = parseInt(process.env.ASA_ID || '0');
+    if (!asaId) {
+      return res.status(500).json({ error: 'ASA_ID not configured' });
+    }
+
+    const indexerUrl = process.env.INDEXER_URL || 'https://testnet-idx.algonode.cloud';
+    const indexerClient = new algosdk.Indexer('', indexerUrl, '');
+
+    // Query all transactions for this wallet (includes app calls with inner txns)
+    const txnResponse = await indexerClient
+      .searchForTransactions()
+      .address(walletAddress)
+      .do();
+
+    const incomingTxns = [];
+
+    // Process transactions to find incoming LEARN coin transfers
+    for (const txn of txnResponse.transactions) {
+      // Check top-level asset transfers
+      if (txn['tx-type'] === 'axfer') {
+        const assetTransfer = txn['asset-transfer-transaction'];
+        if (assetTransfer &&
+            assetTransfer['asset-id'] === asaId &&
+            assetTransfer.receiver === walletAddress &&
+            txn.sender !== walletAddress) {
+          incomingTxns.push({
+            amount: assetTransfer.amount,
+            txId: txn.id,
+            createdAt: new Date(txn['round-time'] * 1000).toISOString(),
+            sender: txn.sender,
+            round: txn['confirmed-round'],
+          });
+        }
+      }
+
+      // Check inner transactions (from smart contract calls)
+      if (txn['inner-txns']) {
+        for (const innerTxn of txn['inner-txns']) {
+          if (innerTxn['tx-type'] === 'axfer') {
+            const assetTransfer = innerTxn['asset-transfer-transaction'];
+            if (assetTransfer &&
+                assetTransfer['asset-id'] === asaId &&
+                assetTransfer.receiver === walletAddress) {
+              incomingTxns.push({
+                amount: assetTransfer.amount,
+                txId: txn.id, // Parent transaction ID
+                createdAt: new Date(txn['round-time'] * 1000).toISOString(),
+                sender: assetTransfer.sender,
+                round: txn['confirmed-round'],
+                fromContract: true,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    res.json(incomingTxns);
   } catch (error) {
+    console.error('Error fetching blockchain rewards:', error);
     res.status(500).json({ error: error.message });
   }
 });
