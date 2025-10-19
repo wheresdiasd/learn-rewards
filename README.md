@@ -1,3 +1,6 @@
+DEMO VIDEO - https://www.youtube.com/watch?v=JtcKaPuDYfc
+
+
 # Algorand Learning Platform - 2-Day Hackathon MVP
 
 A non-profit learning platform MVP that rewards learners with Algorand ASA tokens on TestNet for completing course assignments.
