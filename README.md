@@ -5,19 +5,76 @@ A non-profit learning platform MVP that rewards learners with Algorand ASA token
 ## Features
 
 - **Single Course/Module/Lecture**: Introduction to Blockchain Development
-- **Wallet Integration**: Connect with Pera Wallet
+- **Wallet Authentication**: Connect with Pera Wallet for blockchain-based identity
 - **PR Submission**: Submit pull request URLs for review
 - **Volunteer Review**: Simple Pass/Fail review system
 - **ASA Rewards**: Real Algorand ASA transfers on TestNet when submissions are approved
 - **Partner Directory**: 6 mock educational partners (simulated purchases)
-- **No Authentication**: Single default learner, no login required
+- **Decentralized Auth**: Wallet address as identity, no traditional login required
 
 ## Tech Stack
 
 - **Frontend**: React + TypeScript + Vite
 - **Backend**: Node.js + Express
 - **Blockchain**: Algorand TestNet (algosdk + Pera Wallet Connect)
+- **Smart Contracts**: TEALScript (TypeScript-to-TEAL compiler)
 - **Persistence**: JSON file (data.json)
+
+## Smart Contract: RewardContract
+
+The platform uses an Algorand smart contract for decentralized reward distribution. The contract holds ASA tokens in escrow and automatically pays learners when a validator approves their submission.
+
+**Contract Source:** `contracts/RewardContract.algo.ts`
+
+### State Variables
+
+- `validator` - Address authorized to approve submissions
+- `asaId` - The ASA token ID to distribute (LearnToken)
+- `rewardAmount` - Tokens per approval (100 LEARN)
+
+### Core Methods
+
+**`createApplication(validator, asaId, rewardAmount)`**
+- Initializes contract with validator address and reward parameters
+- Called once during deployment
+
+**`optInToAsa()`**
+- Opts the contract into the ASA (required before receiving tokens)
+- Algorand accounts must explicitly opt-in to any ASA
+
+**`approveAndPay(learner)`**
+- Validates caller is the authorized validator
+- Automatically transfers `rewardAmount` ASA to learner
+- Uses **inner transactions** for atomic payment
+- Either succeeds completely or reverts (no partial states)
+
+**`getBalance()`**
+- Read-only method to check contract's ASA balance
+
+**`updateValidator(newValidator)`**
+- Allows current validator to change the authorized address
+
+**`updateRewardAmount(newAmount)`**
+- Allows validator to adjust reward amount
+
+### How It Works
+
+1. Contract is deployed with validator address, ASA ID, and reward amount
+2. Contract opts into the ASA token
+3. Organization funds contract with ASA tokens
+4. When validator approves a submission, they call `approveAndPay(learnerAddress)`
+5. Contract validates sender is the validator
+6. Contract sends ASA to learner via inner transaction (atomic, ~4.5 seconds)
+
+### Why Algorand?
+
+- **TEALScript**: Write contracts in TypeScript instead of Solidity
+- **Inner Transactions**: Contracts can send assets on behalf of their escrow account
+- **Instant Finality**: 4.5 second blocks, 1 confirmation is final
+- **Low Cost**: ~$0.0006 per approval (vs. $5-50 on Ethereum)
+- **Layer-1 ASA**: Tokens are protocol primitives, not vulnerable smart contracts
+
+See `contracts/README.md` for deployment instructions.
 
 ## Prerequisites
 
@@ -194,12 +251,13 @@ algorand/
 
 ### Security (Intentional Omissions)
 
-This is a **demo-only MVP** with no security features:
-- No authentication/authorization
-- No rate limiting
-- No input validation
-- Custodial wallet (server holds mnemonic)
-- Single default user
+This is a **demo-only MVP** with limited security features:
+- **Wallet-based authentication**: Uses Pera Wallet connection (blockchain identity)
+- **No backend authorization**: Volunteer page has no access control
+- **No rate limiting**: Endpoints are unprotected
+- **No input validation**: PR URLs and addresses not validated
+- **Custodial validator**: Server holds validator mnemonic for approvals
+- **Single learner mode**: Simplified for demo purposes
 
 **DO NOT use in production or with mainnet funds!**
 
