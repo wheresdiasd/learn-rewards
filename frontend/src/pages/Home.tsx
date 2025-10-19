@@ -21,17 +21,21 @@ function Home({ walletAddress }: HomeProps) {
   const [activeTab, setActiveTab] = useState<'course' | 'assignment'>('course');
 
   useEffect(() => {
-    fetchSubmission();
-  }, []);
+    if (walletAddress) {
+      fetchSubmission();
+    }
+  }, [walletAddress]);
 
   const fetchSubmission = async () => {
+    if (!walletAddress) return;
+
     try {
-      const res = await fetch(`${API_BASE}/submissions`);
+      const res = await fetch(`${API_BASE}/submissions?walletAddress=${walletAddress}`);
       if (res.ok) {
-        const allSubmissions = await res.json();
+        const userSubmissions = await res.json();
         // Get the latest submission for this user
-        const latestSubmission = allSubmissions.length > 0
-          ? allSubmissions[allSubmissions.length - 1]
+        const latestSubmission = userSubmissions.length > 0
+          ? userSubmissions[userSubmissions.length - 1]
           : null;
 
         if (latestSubmission) {
@@ -54,6 +58,11 @@ function Home({ walletAddress }: HomeProps) {
       return;
     }
 
+    if (!walletAddress) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -62,7 +71,7 @@ function Home({ walletAddress }: HomeProps) {
       const res = await fetch(`${API_BASE}/submission`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prUrl }),
+        body: JSON.stringify({ prUrl, walletAddress }),
       });
 
       if (res.ok) {
@@ -74,7 +83,8 @@ function Home({ walletAddress }: HomeProps) {
         });
         setSuccess('PR submission saved!');
       } else {
-        setError('Failed to save submission');
+        const errorData = await res.json();
+        setError(errorData.error || 'Failed to save submission');
       }
     } catch (err: any) {
       setError(`Error: ${err.message}`);

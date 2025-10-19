@@ -281,11 +281,24 @@ app.post('/api/wallet', async (req, res) => {
   }
 });
 
-// GET /api/submissions - Get all submissions (for Volunteer page)
+// GET /api/submissions - Get submissions
+// If walletAddress query param is provided, filter by that wallet (for students)
+// Otherwise, return all submissions (for Volunteer page)
 app.get('/api/submissions', async (req, res) => {
   try {
+    const { walletAddress } = req.query;
     const data = await readData();
-    res.json(data.submissions);
+
+    if (walletAddress) {
+      // Filter submissions for this specific wallet
+      const userSubmissions = data.submissions.filter(
+        s => s.walletAddress === walletAddress
+      );
+      res.json(userSubmissions);
+    } else {
+      // Return all submissions (for volunteer panel)
+      res.json(data.submissions);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -294,8 +307,12 @@ app.get('/api/submissions', async (req, res) => {
 // POST /api/submission - Create a new submission
 app.post('/api/submission', async (req, res) => {
   try {
-    const { prUrl } = req.body;
+    const { prUrl, walletAddress } = req.body;
     const data = await readData();
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'Wallet address is required' });
+    }
 
     // Generate new submission ID
     const newId = data.submissions.length > 0
@@ -304,9 +321,9 @@ app.post('/api/submission', async (req, res) => {
 
     const newSubmission = {
       id: newId,
-      userId: data.user.id,
+      userId: data.user.id, // Keep for backwards compatibility
       prUrl,
-      walletAddress: data.user.walletAddress,
+      walletAddress,
       status: 'draft',
       txId: null,
       createdAt: new Date().toISOString(),

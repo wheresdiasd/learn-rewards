@@ -6,6 +6,7 @@ import Volunteer from './pages/Volunteer';
 import Rewards from './pages/Rewards';
 import Partners from './pages/Partners';
 import PurchaseSuccess from './pages/PurchaseSuccess';
+import Landing from './pages/Landing';
 import WalletButton from './components/WalletButton';
 import WalletConnectModal from './components/WalletConnectModal';
 import algorandLogo from './assets/algorand-logo.svg';
@@ -18,7 +19,11 @@ function App() {
   const [walletAddress, setWalletAddress] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Get organization wallet address from environment variable
+  const orgWalletAddress = import.meta.env.VITE_ORG_WALLET_ADDRESS || '';
+
   useEffect(() => {
+    // Reconnect wallet session
     peraWallet
       .reconnectSession()
       .then((accounts) => {
@@ -60,12 +65,15 @@ function App() {
     setWalletAddress('');
   };
 
+  // Check if connected wallet is the organization wallet
+  const isOrgWallet = walletAddress && orgWalletAddress && walletAddress === orgWalletAddress;
+
   return (
     <Router>
       <div className="app">
         <nav className="navbar">
           <div className="nav-container">
-            <Link to="/" style={{ textDecoration: 'none' }}>
+            <Link to={isOrgWallet ? "/volunteer" : "/"} style={{ textDecoration: 'none' }}>
               <h1 className="logo">
                 <img src={algorandLogo} alt="Algorand" className="logo-image" />
                 <span style={{ letterSpacing: '-0.02em' }}>
@@ -74,8 +82,10 @@ function App() {
               </h1>
             </Link>
             <div className="nav-links">
-              <Link to="/">Course</Link>
-              <Link to="/volunteer">Volunteer</Link>
+              {/* Show Course link only for non-organization wallets */}
+              {!isOrgWallet && <Link to="/">Course</Link>}
+              {/* Show Volunteer link only for organization wallet */}
+              {isOrgWallet && <Link to="/volunteer">Volunteer</Link>}
               <Link to="/rewards">Rewards</Link>
               <Link to="/partners">Partners</Link>
               <WalletButton
@@ -94,8 +104,38 @@ function App() {
         />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<Home walletAddress={walletAddress} />} />
-            <Route path="/volunteer" element={<Volunteer />} />
+            {/* Home route - different content based on wallet type */}
+            <Route
+              path="/"
+              element={
+                !walletAddress ? (
+                  // Not logged in - show landing page
+                  <Landing onOpenModal={() => setIsModalOpen(true)} />
+                ) : isOrgWallet ? (
+                  // Organization wallet - show volunteer review panel
+                  <Volunteer />
+                ) : (
+                  // Regular user - show course page
+                  <Home walletAddress={walletAddress} />
+                )
+              }
+            />
+            {/* Volunteer route - only accessible for organization wallet */}
+            <Route
+              path="/volunteer"
+              element={
+                isOrgWallet ? (
+                  <Volunteer />
+                ) : (
+                  <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+                    <h2>Access Restricted</h2>
+                    <p style={{ color: '#94a3b8', fontSize: '1.1rem', marginTop: '1rem' }}>
+                      Only the organization wallet can access the Volunteer panel.
+                    </p>
+                  </div>
+                )
+              }
+            />
             <Route path="/rewards" element={<Rewards />} />
             <Route path="/partners" element={<Partners />} />
             <Route path="/partners/:id/success" element={<PurchaseSuccess />} />
