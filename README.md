@@ -128,53 +128,73 @@ This starts both frontend (port 5173) and backend (port 3001) concurrently.
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3001/api
 
-## How to Create an ASA on TestNet (Optional Script)
+## How to Create an ASA on TestNet
 
-If you need to create an ASA quickly, here's a simple script:
+The project includes `backend/create-asa.js` for creating the LearnToken ASA on TestNet using BIP-39/BIP-32 HD wallet derivation.
+
+### Usage
 
 ```bash
 cd backend
-node create-asa.js
+MNEMONIC="word1 word2 ... word24" CREATE_ASA=true node create-asa.js
 ```
 
-Create `backend/create-asa.js`:
+### Environment Variables
+
+- **`MNEMONIC`** (required): 24-word BIP-39 mnemonic phrase
+- **`CREATE_ASA`** (required): Set to `true` to create the ASA
+- **`BIP39_PASS`** (optional): BIP-39 passphrase (default: empty string)
+- **`ACCOUNT`** (optional): BIP-32 account number (default: 0)
+- **`INDEX`** (optional): BIP-32 address index (default: 0)
+- **`TARGET_ADDR`** (optional): Expected address for sanity check
+
+### ASA Configuration
+
+The script creates LearnToken with these parameters (edit in `create-asa.js` lines 21-28):
 
 ```javascript
-import algosdk from 'algosdk';
-
-const algodClient = new algosdk.Algodv2('', 'https://testnet-api.algonode.cloud', '');
-const mnemonic = 'YOUR 25 WORD MNEMONIC HERE';
-const account = algosdk.mnemonicToSecretKey(mnemonic);
-
-async function createASA() {
-  const suggestedParams = await algodClient.getTransactionParams().do();
-
-  const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-    from: account.addr,
-    total: 1000000,
-    decimals: 0,
-    assetName: 'LearnToken',
-    unitName: 'LEARN',
-    assetURL: 'https://example.com',
-    defaultFrozen: false,
-    manager: account.addr,
-    reserve: account.addr,
-    freeze: account.addr,
-    clawback: account.addr,
-    suggestedParams,
-  });
-
-  const signedTxn = txn.signTxn(account.sk);
-  const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
-  const result = await algosdk.waitForConfirmation(algodClient, txId, 4);
-
-  const assetIndex = result['asset-index'];
-  console.log(`ASA created! Asset ID: ${assetIndex}`);
-  console.log(`Add this to your .env file: ASA_ID=${assetIndex}`);
+{
+  name: "LearnToken",
+  unit: "LEARN",
+  decimals: 6,
+  totalBaseUnits: 1_000_000_000_000n, // 1M tokens with 6 decimals
+  defaultFrozen: false,
+  url: "https://example.com/learn"
 }
-
-createASA().catch(console.error);
 ```
+
+### How It Works
+
+1. **Derives address** from 24-word mnemonic using BIP-44 path: `m/44'/283'/${ACCOUNT}'/0/${INDEX}`
+2. **Validates derivation** against `TARGET_ADDR` if provided
+3. **Creates ASA** on TestNet with specified parameters (if `CREATE_ASA=true`)
+4. **Signs transaction** using xHD wallet API (compatible with multiple library versions)
+5. **Outputs** Asset ID for use in `.env` file
+
+### Example Output
+
+```
+✅ Derived address: 5K747I...WCPNAEQ
+   Path:           m/44'/283'/0'/0/0
+🔐 Sanity check: derived address matches TARGET_ADDR.
+🎉 ASA created on TestNet
+   TxID:      ABC123...XYZ
+   Asset ID:  123456789
+   Round:     12345678
+```
+
+Add the Asset ID to `backend/.env`:
+
+```env
+ASA_ID=123456789
+```
+
+### Compatibility Notes
+
+The script includes compatibility shims for different versions of `@algorandfoundation/xhd-wallet-api`:
+- Tries both 4-argument and 5-argument `keyGen()` signatures
+- Handles both short and long form `signAlgoTransaction()` calls
+- See `backend/create-asa.js:33-65` for implementation details
 
 ## Demo Flow (Acceptance Criteria)
 
